@@ -19,8 +19,11 @@ export function formatDate(dateString: string): string {
   } else if (diffDays <= 7) {
     return '${diffDays - 1} days ago';
   } else if (diffDays <= 30) {
-    const weeks = Math.floor(diffDays / 7);
-    return '${weeks} ${weeks === 1 ? "week" : "weeks"} ago';
+    return date.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
   } else {
     return date.toLocaleDateString("en-US", {
       month: "short",
