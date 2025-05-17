@@ -1,103 +1,144 @@
-import Image from "next/image";
+// app/page.tsx
+"use client";
+
+import { useState, useEffect } from "react";
+import type { Job } from "../types/job";
+import Navbar from "./components/navbar"
+import SearchBar from "./components/search-bar";
+import JobList from "./components/job-list";
+import CategoryFilter from "./components/category-filter";
+import SavedJobsTab from "./components/saved-jobs-tab";
+import { mockJobs } from "../data/dummyData";
+import Pagination from "./components/pagintion"
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [showSavedJobs, setShowSavedJobs] = useState(false);
+  const [savedJobs, setSavedJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const jobsPerPage = 10;
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  // Load jobs and saved jobs
+  useEffect(() => {
+    // Simulate API fetch with a delay
+    const fetchJobs = async () => {
+      setLoading(true);
+      try {
+        // Simulate network delay
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        setJobs(mockJobs);
+        setFilteredJobs(mockJobs);
+      } catch (error) {
+        console.error("Error fetching jobs:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchJobs();
+
+    // Load saved jobs from localStorage
+    const savedJobsFromStorage = localStorage.getItem("savedJobs");
+    if (savedJobsFromStorage) {
+      setSavedJobs(JSON.parse(savedJobsFromStorage));
+    }
+  }, []);
+
+  // Filter jobs based on search term and category
+  useEffect(() => {
+    let result = jobs;
+
+    if (showSavedJobs) {
+      result = savedJobs;
+    } else {
+      // Filter by search term
+      if (searchTerm) {
+        result = result.filter(
+          (job) =>
+            job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            job.companyName.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+
+      // Filter by category
+      if (selectedCategory) {
+        result = result.filter((job) => job.category === selectedCategory);
+      }
+    }
+
+    setFilteredJobs(result);
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [searchTerm, selectedCategory, showSavedJobs, jobs, savedJobs]);
+
+  // Save/unsave job
+  const toggleSaveJob = (job: Job) => {
+    const isJobSaved = savedJobs.some((savedJob) => savedJob.id === job.id);
+
+    let updatedSavedJobs: Job[];
+
+    if (isJobSaved) {
+      updatedSavedJobs = savedJobs.filter((savedJob) => savedJob.id !== job.id);
+    } else {
+      updatedSavedJobs = [...savedJobs, job];
+    }
+
+    setSavedJobs(updatedSavedJobs);
+    localStorage.setItem("savedJobs", JSON.stringify(updatedSavedJobs));
+  };
+
+  // Get unique categories from jobs
+  const categories = Array.from(new Set(jobs.map((job) => job.category)));
+
+  // Calculate pagination
+  const indexOfLastJob = currentPage * jobsPerPage;
+  const indexOfFirstJob = indexOfLastJob - jobsPerPage;
+  const currentJobs = filteredJobs.slice(indexOfFirstJob, indexOfLastJob);
+  const totalPages = Math.ceil(filteredJobs.length / jobsPerPage);
+
+  return (
+    <main className="min-h-screen bg-gray-50">
+      <Navbar />
+
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+          <div className="w-full md:w-2/3">
+            <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+          </div>
+
+          <div className="flex items-center gap-4">
+            <CategoryFilter
+              categories={categories}
+              selectedCategory={selectedCategory}
+              setSelectedCategory={setSelectedCategory}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+
+            <SavedJobsTab
+              showSavedJobs={showSavedJobs}
+              setShowSavedJobs={setShowSavedJobs}
+              savedJobsCount={savedJobs.length}
+            />
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+
+        <JobList jobs={currentJobs} loading={loading} savedJobs={savedJobs} toggleSaveJob={toggleSaveJob} />
+
+        {!loading && filteredJobs.length > jobsPerPage && (
+          <Pagination currentPage={currentPage} totalPages={totalPages} setCurrentPage={setCurrentPage} />
+        )}
+
+        {!loading && filteredJobs.length === 0 && (
+          <div className="text-center py-10">
+            <h3 className="text-xl font-medium text-gray-600">No jobs found</h3>
+            <p className="text-gray-500 mt-2">
+              {showSavedJobs ? "You haven't saved any jobs yet." : "Try adjusting your search or filters."}
+            </p>
+          </div>
+        )}
+      </div>
+    </main>
   );
 }
